@@ -1,2 +1,0 @@
-banned.json
-spam_log.txt
