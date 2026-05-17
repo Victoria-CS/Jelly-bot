@@ -1,6 +1,8 @@
 import json, time
 import os
 import asyncio
+import threading
+from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (
     ApplicationBuilder,
@@ -11,12 +13,18 @@ from telegram.ext import (
     ContextTypes
 )
 
+import logging
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
+
 TOKEN = os.getenv("BOT_TOKEN")
 MANAGER_CHAT_ID = -4790241047
 
 RATE_LIMIT_MESSAGES = 5
 RATE_LIMIT_SECONDS = 10
-BAN_DURATION_SECONDS = 60 * 60 
+BAN_DURATION_SECONDS = 60 * 60
 
 active_chats = set()
 message_timestamps = {}
@@ -50,8 +58,6 @@ def check_rate_limit(user_id):
     timestamps.append(now)
     message_timestamps[user_id] = timestamps
     return len(timestamps) > RATE_LIMIT_MESSAGES
-
-app = ApplicationBuilder().token(TOKEN).build()
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -178,13 +184,35 @@ async def rating_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.message.reply_text("Спасибо за твою оценку 💖")
     await context.bot.send_message(chat_id=MANAGER_CHAT_ID, text=f"⭐ Пользователь (ID {user_id}) поставил оценку: {rating}⭐")
 
+flask_app = Flask(__name__)
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & filters.Regex("^💬 Связаться с менеджером$"), client_menu_button))
-app.add_handler(CallbackQueryHandler(end_chat, pattern="^end_chat:"))
-app.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.TEXT, client_message))
-app.add_handler(MessageHandler(filters.ChatType.GROUPS & filters.REPLY & filters.TEXT, manager_reply))
-app.add_handler(CallbackQueryHandler(rating_callback, pattern="^rate:"))
+@flask_app.route("/")
+def index():
+    return "Jelly bot is running 🍬"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 8080))
+    flask_app.run(host="0.0.0.0", port=port)
+
+def run_bot():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    app = ApplicationBuilder().token(TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & filters.Regex("^💬 Связаться с менеджером$"), client_menu_button))
+    app.add_handler(CallbackQueryHandler(end_chat, pattern="^end_chat:"))
+    app.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.TEXT, client_message))
+    app.add_handler(MessageHandler(filters.ChatType.GROUPS & filters.REPLY & filters.TEXT, manager_reply))
+    app.add_handler(CallbackQueryHandler(rating_callback, pattern="^rate:"))
+
+    loop.run_until_complete(app.run_polling())
+
 
 if __name__ == "__main__":
-    asyncio.run(app.run_polling())
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+
+    # Flask в главном потоке (Render слушает порт)
+    run_flask()
