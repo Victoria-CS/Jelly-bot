@@ -185,10 +185,4 @@ app.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.TEXT, client_m
 app.add_handler(MessageHandler(filters.ChatType.GROUPS & filters.REPLY & filters.TEXT, manager_reply))
 app.add_handler(CallbackQueryHandler(rating_callback, pattern="^rate:"))
 
-import asyncio
-
-async def main():
-    await app.run_polling()
-
-if __name__ == "__main__":
-    asyncio.run(main())
+app.run_polling(close_loop=False)
