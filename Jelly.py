@@ -207,7 +207,7 @@ def run_bot():
     app.add_handler(MessageHandler(filters.ChatType.GROUPS & filters.REPLY & filters.TEXT, manager_reply))
     app.add_handler(CallbackQueryHandler(rating_callback, pattern="^rate:"))
 
-    loop.run_until_complete(app.run_polling())
+    loop.run_until_complete(app.run_polling(stop_signals=[]))
 
 
 if __name__ == "__main__":
