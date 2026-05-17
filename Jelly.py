@@ -1,5 +1,6 @@
 import json, time
 import os
+import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import (
     ApplicationBuilder,
@@ -185,4 +186,5 @@ app.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.TEXT, client_m
 app.add_handler(MessageHandler(filters.ChatType.GROUPS & filters.REPLY & filters.TEXT, manager_reply))
 app.add_handler(CallbackQueryHandler(rating_callback, pattern="^rate:"))
 
-app.run_polling(close_loop=False)
+if __name__ == "__main__":
+    asyncio.run(app.run_polling())
